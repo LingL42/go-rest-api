@@ -69,7 +69,24 @@ func addTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks[task.ID] = task
+	if task.ID == "" {
+		http.Error(w, "Невозможно добавить задачу без ID", http.StatusBadRequest)
+		return
+	}
+
+	_, ok := tasks[task.ID]
+	if ok {
+		http.Error(w, "Задача с таким ID уже существует", http.StatusBadRequest)
+		return
+	}
+
+	if task.Applications == nil {
+		task.Applications = r.Header.Values("User-Agent")
+		tasks[task.ID] = task
+
+	} else {
+		tasks[task.ID] = task
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -77,7 +94,7 @@ func addTask(w http.ResponseWriter, r *http.Request) {
 }
 
 // Получаем задачу по ID
-func getTaskById(w http.ResponseWriter, r *http.Request) {
+func getTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	task, ok := tasks[id]
@@ -98,7 +115,7 @@ func getTaskById(w http.ResponseWriter, r *http.Request) {
 }
 
 // Удаляем задачу по ID
-func deletTaskById(w http.ResponseWriter, r *http.Request) {
+func deletTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	task, ok := tasks[id]
@@ -120,9 +137,9 @@ func main() {
 
 	r.Post("/tasks", addTask)
 
-	r.Get("/tasks/{id}", getTaskById)
+	r.Get("/tasks/{id}", getTask)
 
-	r.Delete("/tasks/{id}", deletTaskById)
+	r.Delete("/tasks/{id}", deletTask)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		fmt.Printf("Ошибка при запуске сервера: %s", err.Error())
